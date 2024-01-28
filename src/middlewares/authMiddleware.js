@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken'); 
+const jwt = require('jsonwebtoken');
 const User = require('../models/userModal');
 const dotenv = require('dotenv');
 dotenv.config();
@@ -7,7 +7,7 @@ dotenv.config();
 
 exports.verifyToken = async (req, res, next) => {
     try {
-        const token = req.headers.authorization.split(' ')[1]; 
+        const token = req.headers.authorization.split(' ')[1];
         if (!token) {
             return res.status(401).send('Unauthorized');
         }
@@ -30,3 +30,33 @@ exports.verifyToken = async (req, res, next) => {
     }
 };
 
+
+
+
+
+// authMiddleware.js
+
+exports.checkRole = (role) => {
+    return (req, res, next) => {
+      try {
+        // Ensure the user is authenticated (assuming you have a middleware for token verification)
+        if (!req.user) {
+          return res.status(401).json({ message: 'Unauthorized' });
+        }
+  
+        console.log(req.user)
+
+        // Check if the user has the required role
+        if (req.user.roles && req.user.roles.includes(role)) {
+          return next();
+        } else {
+          return res.status(403).json({ message: 'Forbidden: Insufficient role privileges' });
+        }
+      } catch (error) {
+        console.error('Error in checkRole middleware:', error);
+        return res.status(500).json({ message: 'Internal Server Error' });
+      }
+    };
+  };
+  
+  

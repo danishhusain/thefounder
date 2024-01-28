@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const { generateOTP, sendOtpViaEmail } = require('../../utils/otpMethods');
+const { generateOTP, sendOtpViaEmail } = require('../../utils/authUtils');
 dotenv.config();
 
 
@@ -13,7 +13,7 @@ dotenv.config();
 
 //register
 exports.register = async (req, res) => {
-  const { email, userName, number, password } = req.body;
+  const { email, userName, number, password, roles } = req.body;
 
   try {
     // Check if user with the provided email or userName already exists
@@ -35,6 +35,7 @@ exports.register = async (req, res) => {
         email: email,
         userName: userName,
         number: number,
+        roles: roles,
         password: passwordHash,
         emailVerification: {
           otp: otp,
@@ -86,7 +87,7 @@ exports.emailOtpVerify = async (req, res) => {
       { email: email, 'emailVerification.otp': otp, 'emailVerification.isVerified': false },
       {
         $set: {
-          'emailVerification.otp': null,
+          // 'emailVerification.otp': null,
           'emailVerification.isVerified': true,
         },
       },
@@ -110,6 +111,48 @@ exports.emailOtpVerify = async (req, res) => {
 
 
 
+
+// exports.login = async (req, res) => {
+//   const { email, password } = req.body;
+
+//   try {
+//     // Check if user with the provided email exists
+//     const user = await User.findOne({ email: email });
+
+//     if (user) {
+//       // Compare the provided password with the stored hashed password
+//       const isPasswordValid = await bcrypt.compare(password, user.password);
+
+//       if (isPasswordValid) {
+//         // Generate a JWT token for authentication
+//         const token = jwt.sign({ userId: user._id }, process.env.TOKEN_KEY);
+
+//         // Record login event
+//         user.loginHistory.push({ timestamp: Date.now(), ipAddress: req.ip });
+
+//         // Store the token in the user object
+//         user.token = token;
+
+//         // await user.save();
+//         // Send the JSON response to the client
+//         res.status(200).json({
+//           status: true,
+//           message: 'Login successful',
+//           data: user,
+//         });
+//       } else {
+//         res.status(401).json({ status: false, message: 'Invalid password' });
+//       }
+//     } else {
+//       res.status(404).json({ status: false, message: 'User not found' });
+//     }
+//   } catch (error) {
+//     console.error('Error logging in user:', error);
+//     res.status(500).json({ status: false, message: 'Internal server error' });
+//   }
+// };
+
+
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -123,30 +166,89 @@ exports.login = async (req, res) => {
 
       if (isPasswordValid) {
         // Generate a JWT token for authentication
-        // const token = jwt.sign({ userId: user._id }, process.env.TOKEN_KEY, { expiresIn: '1h' });
         const token = jwt.sign({ userId: user._id }, process.env.TOKEN_KEY);
 
-        const resp = res.status(200).json({
+        // Record login event
+        user.loginHistory.push({ timestamp: Date.now(), ipAddress: req.ip });
+
+        // Store the token in the user object
+        user.token = token;
+        user.accountStatus = true
+
+
+        // Save changes to the database
+        await user.save();
+
+        // Send the JSON response to the client
+        res.status(200).json({
           status: true,
           message: 'Login successful',
-          data: {  user, token: token },
+          data: user,
         });
       } else {
         res.status(401).json({ status: false, message: 'Invalid password' });
       }
     } else {
-      res.status(404).json({ status: false, message: 'user not found' });
+      res.status(404).json({ status: false, message: 'User not found' });
     }
   } catch (error) {
     console.error('Error logging in user:', error);
-    res.status(500).json({ status: false, message: 'Internal server error' });
+    res.status(500).json({ status: false, message: 'Internal server error', });
   }
 };
 
 
 
 
+exports.logout = async (req, res) => {
+  try {
+    const user = req.user; // Assuming you have middleware for user authentication
 
+    if (user) {
+      console.log(user)
+      // Set logoutTime to the current date and time
+      // user.logoutTime = new Date();
+      // Record logout event
+      user.logoutHistory.push({ timestamp: Date.now() });
+      user.accountStatus = false
+      user.token = null;
+
+      await user.save();
+      res.status(200).json({
+        status: true,
+        message: 'Logout successful',
+      });
+    } else {
+      res.status(401).json({ status: false, message: 'User not authenticated' });
+    }
+  } catch (error) {
+    console.error('Error logging out user:', error);
+    res.status(500).json({ status: false, message: 'Internal server error' });
+  }
+};
+
+// Get login and logout history for a user
+exports.userHistory = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ status: false, message: 'User not found' });
+    }
+
+    const loginHistory = user.loginHistory;
+    const logoutHistory = user.logoutHistory;
+
+    res.status(200).json({
+      status: true,
+      data: { userId, loginHistory, logoutHistory },
+    });
+  } catch (error) {
+    console.error('Error retrieving user history:', error);
+    res.status(500).json({ status: false, message: 'Internal server error' });
+  }
+}
 
 
 
@@ -165,12 +267,12 @@ exports.login = async (req, res) => {
 
 exports.testUser = async (req, res) => {
 
-  console.log("testUser1",)
+  console.log("testUser1", req.ip)
   try {
     res.status(201).json({
       message: 'testUser1',
       status: true,
-      data: [req.user]
+      data: [req.user, req.ip]
     });
 
   } catch (error) {
