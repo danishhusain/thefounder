@@ -19,7 +19,6 @@ const userSchema = new mongoose.Schema({
     trim: true,
     required: true,
     unique: true,
-
   },
   email: {
     type: String,
@@ -39,6 +38,7 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+
   fcmToken: {
     type: String,
     default: null,
@@ -52,26 +52,18 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
-  // loginTime: { type: Date },
-  // logoutTime: { type: Date },
-  // Fields to track login and logout events
-  loginHistory: [
-    {
-      timestamp: { type: Date, default: Date.now },
-      ipAddress: { type: String },
-    },
-  ],
-  logoutHistory: [
-    {
-      timestamp: { type: Date, default: Date.now },
-    },
-  ],
-
   createdAt: { type: Date, default: Date.now },
+  jobTitle: {
+    type: String,
+  },
+  employmentType: {
+    type: String,
+    enum: ['Full-Time', 'Part-Time', 'Contractual/Temporary', 'Freelance/Consultant', 'Internship']
 
+  },
   roles: [{
     type: String,
-    enum: ['superAdmin', 'admin', 'manager', 'employee']
+    enum: ['superAdmin', 'admin', 'subAdmin', 'manager', 'employee']
   }],
   emailVerification: {
     otp: {
@@ -86,8 +78,26 @@ const userSchema = new mongoose.Schema({
 
 });
 
-module.exports = mongoose.model('user', userSchema);
+const User = mongoose.model('user', userSchema);
 
 
+
+const loginHistorySchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  timestamp: { type: Date, default: Date.now },
+  ipAddress: { type: String },
+});
+
+const LoginHistory = mongoose.model('LoginHistory', loginHistorySchema);
+
+
+const logoutHistorySchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  timestamp: { type: Date, default: Date.now },
+});
+
+const LogoutHistory = mongoose.model('LogoutHistory', logoutHistorySchema);
+
+module.exports = { LoginHistory, LogoutHistory, User };
 
 

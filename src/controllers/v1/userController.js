@@ -1,10 +1,10 @@
-const User = require('../../models/userModal');
+const { User, LoginHistory, LogoutHistory, } = require('../../models/userModal');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
-const { generateOTP, sendOtpViaEmail } = require('../../utils/authUtils');
+const { generateOTP, sendOtpViaEmail, recordLoginHistory, recordLogoutHistory } = require('../../utils/authUtils');
 dotenv.config();
 
 
@@ -17,7 +17,7 @@ exports.register = async (req, res) => {
 
   try {
     // Check if user with the provided email or userName already exists
-    const checkUser = await User.findOne({ $or: [{ email: email }, { userName: userName }] })
+    const checkUser = await User.findOne({ $or: [{ email: email }, { userName: userName }, { number: number }] })
 
     if (!checkUser) {
       const otp = generateOTP();
@@ -169,7 +169,9 @@ exports.login = async (req, res) => {
         const token = jwt.sign({ userId: user._id }, process.env.TOKEN_KEY);
 
         // Record login event
-        user.loginHistory.push({ timestamp: Date.now(), ipAddress: req.ip });
+        // user.loginHistory.push({ timestamp: Date.now(), ipAddress: req.ip });
+        await recordLoginHistory(user._id, req.ip);
+
 
         // Store the token in the user object
         user.token = token;
@@ -205,11 +207,10 @@ exports.logout = async (req, res) => {
     const user = req.user; // Assuming you have middleware for user authentication
 
     if (user) {
-      console.log(user)
-      // Set logoutTime to the current date and time
-      // user.logoutTime = new Date();
       // Record logout event
       user.logoutHistory.push({ timestamp: Date.now() });
+      await recordLogoutHistory(user._id);
+
       user.accountStatus = false
       user.token = null;
 
@@ -228,21 +229,61 @@ exports.logout = async (req, res) => {
 };
 
 // Get login and logout history for a user
-exports.userHistory = async (req, res) => {
+exports.loginHistory = async (req, res) => {
   try {
     const userId = req.params.userId;
-    const user = await User.findById(userId);
+    const user = await LoginHistory.find({ userId: userId });
 
     if (!user) {
       return res.status(404).json({ status: false, message: 'User not found' });
     }
 
-    const loginHistory = user.loginHistory;
-    const logoutHistory = user.logoutHistory;
+    res.status(200).json({
+      status: true,
+      data: { userId, user },
+    });
+  } catch (error) {
+    console.error('Error retrieving user history:', error);
+    res.status(500).json({ status: false, message: 'Internal server error' });
+  }
+}
+// Get login and logout history for a user
+exports.loginHistory = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const user = await LoginHistory.find({ userId: userId });
+
+    if (!user) {
+      return res.status(404).json({ status: false, message: 'User not found' });
+    }
+
 
     res.status(200).json({
       status: true,
-      data: { userId, loginHistory, logoutHistory },
+      message: "Login History data fetched",
+      data: user
+    });
+  } catch (error) {
+    console.error('Error retrieving user history:', error);
+    res.status(500).json({ status: false, message: 'Internal server error' });
+  }
+}
+
+// Get login and logout history for a user
+exports.logoutHistory = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const user = await LoginHistory.find({ userId: userId });
+
+    if (!user) {
+      return res.status(404).json({ status: false, message: 'User not found' });
+    }
+
+
+    res.status(200).json({
+      status: true,
+      message: "Logout History data fetched",
+      data: user
     });
   } catch (error) {
     console.error('Error retrieving user history:', error);

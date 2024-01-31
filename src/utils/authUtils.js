@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { LoginHistory, LogoutHistory } = require('../models/userModal');
 
 
 
@@ -26,4 +27,27 @@ exports.sendOtpViaEmail = async (email, otp, message) => {
         text: `Your OTP for email verification is: ${otp} ${message}`,
     };
     await transporter.sendMail(mailOptions);
+};
+
+
+exports.recordLoginHistory = async (userId, ipAddress) => {
+    try {
+        const loginHistory = new LoginHistory({ userId, ipAddress });
+        await loginHistory.save();
+        return loginHistory;
+    } catch (error) {
+        console.error('Error recording login history:', error);
+        throw error;
+    }
+};
+
+exports.recordLogoutHistory = async (userId) => {
+    try {
+        const logoutHistory = new LogoutHistory({ userId });
+        await logoutHistory.save();
+        return logoutHistory;
+    } catch (error) {
+        console.error('Error recording logout history:', error);
+        throw error;
+    }
 };
