@@ -2,7 +2,8 @@
 const UserInformation = require("../../models/userInformationModel");
 
 exports.createUserInformation = async (req, res) => {
-    console.log("createUserInformation hit succesfully")
+
+    
     const userIdValue = req.params.userId; // Use userId from parameters
     req.body.userId = userIdValue;
     const data = req.body;

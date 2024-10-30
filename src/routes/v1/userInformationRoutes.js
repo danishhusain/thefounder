@@ -10,7 +10,7 @@ router.post('/create/:userId', verifyToken, checkRole('superAdmin', 'admin', 'su
 router.get('/getall', verifyToken, checkRole('superAdmin',), UserInformationController.getAllUsersInformation);
 router.get('/getone/:userId', verifyToken, checkRole('superAdmin', 'admin', 'subAdmin', 'manager', 'employee'), UserInformationController.getUserInformationById);
 router.put('/update/:userId', verifyToken, checkRole('superAdmin', 'admin', 'subAdmin', 'manager', 'employee'), UserInformationController.updateUserInformationById);
-router.delete('/:userId', verifyToken, checkRole('superAdmin','manager'), UserInformationController.deleteUserInformationById);
+router.delete('/:userId', verifyToken, checkRole('superAdmin','admin'), UserInformationController.deleteUserInformationById);
 
 
 module.exports = router;

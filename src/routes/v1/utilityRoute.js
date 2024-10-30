@@ -8,10 +8,11 @@ const { verifyToken, checkRole } = require('../../middlewares/authMiddleware');
 
 
 
-// router.get('/testUser', verifyToken, checkRole('superAdmin', 'admin'), UserController.testUser);
-router.post('/create', UtilityController.createUtilityData);
-router.put('/update', UtilityController.updateUtilityData);
-// router.post('/email-otp-verify', UserController.emailOtpVerify);
+
+
+
+router.get('/role',verifyToken, UtilityController.getRole);
+router.get('/employment-type',verifyToken, UtilityController.getEmploymentType);
 
 
 

@@ -5,6 +5,7 @@ const crypto = require('crypto');
 
 // Define a schema for Personal Details
 const personalDetailsSchema = new mongoose.Schema({
+   
     name: {
         type: String,
     },
@@ -35,6 +36,7 @@ const personalDetailsSchema = new mongoose.Schema({
 
 // Define a schema for Professional Details
 const professionalDetailsSchema = new mongoose.Schema({
+
     designation: {
         type: String,
         // required: true,
@@ -95,6 +97,7 @@ const transfersSchema = new mongoose.Schema({
 
 // Define a schema for Employment History
 const employmentHistorySchema = new mongoose.Schema({
+  
     previousRoles: {
         type: [previousRolesSchema],
         default: [],
@@ -122,6 +125,10 @@ const userInformationSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
+    },
+    companyId: {
+        type: String,
+        required: true,
     },
     personalDetails: personalDetailsSchema,
     professionalDetails: professionalDetailsSchema,

@@ -11,13 +11,13 @@ dotenv.config();
 
 
 
-//register
+// register
 exports.register = async (req, res) => {
-  const { email, userName, number, password, roles } = req.body;
-
+  const { email, userName, number, password, } = req.body;
+  const roles = 'superAdmin'
   try {
     // Check if user with the provided email or userName already exists
-    const checkUser = await User.findOne({ $or: [{ email: email }, { userName: userName }, { number: number }] })
+    const checkUser = await User.findOne({ $or: [{ email: email }, { number: number }] })
 
     if (!checkUser) {
       const otp = generateOTP();
@@ -68,7 +68,7 @@ exports.register = async (req, res) => {
       res.status(201).json({
         status: true,
         message: 'Please verify Otp 30 seconds',
-        data: user,
+        // data: user,
       });
     } else {
       res.status(403).json({ status: false, message: 'User already exists' });
@@ -79,8 +79,40 @@ exports.register = async (req, res) => {
   }
 };
 
+// exports.  emailOtpVerify = async (req, res) => {
+//   const { email, otp } = req.body;
+
+//   try {
+//     const user = await User.findOneAndUpdate(
+//       { email: email, 'emailVerification.otp': otp, 'emailVerification.isVerified': false },
+//       {
+//         $set: {
+//           // 'emailVerification.otp': null,
+//           'emailVerification.isVerified': true,
+//         },
+//       },
+//       { new: true }
+//     );
+
+//     if (!user) {
+//       return res.status(400).send({ message: 'Invalid email or OTP.', status: false, data: [] });
+//     }
+
+
+//     res.status(200).send({
+//       message: `Email verified, user data updated`,
+//       status: true,
+//       data: user
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).send('Internal Server Error');
+//   }
+// };
+
+
 exports.emailOtpVerify = async (req, res) => {
-  const { email, otp } = req.body;
+  const { email, otp, password } = req.body;
 
   try {
     const user = await User.findOneAndUpdate(
@@ -93,16 +125,47 @@ exports.emailOtpVerify = async (req, res) => {
       },
       { new: true }
     );
+
     if (!user) {
       return res.status(400).send({ message: 'Invalid email or OTP.', status: false, data: [] });
     }
 
 
-    res.status(200).send({
-      message: `Email verified, user data updated`,
-      status: true,
-      data: user
-    });
+    if (user) {
+      // Compare the provided password with the stored hashed password
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+
+      if (isPasswordValid) {
+        // Generate a JWT token for authentication
+        const token = jwt.sign({ userId: user._id }, process.env.TOKEN_KEY);
+
+        // Record login event
+        await recordLoginHistory(user._id, req.ip);
+
+
+        // Store the token in the user object
+        user.token = token;
+        user.accountStatus = true
+
+
+        // Save changes to the database
+        await user.save();
+
+        // Send the JSON response to the client
+        res.status(200).json({
+          message: `Email verified`,
+          status: true,
+          data: user,
+        });
+      }
+      else {
+        res.status(404).json({ status: false, message: 'User not found' });
+      }
+    }
+
+
+
+
   } catch (error) {
     console.error(error);
     res.status(500).send('Internal Server Error');
@@ -112,45 +175,6 @@ exports.emailOtpVerify = async (req, res) => {
 
 
 
-// exports.login = async (req, res) => {
-//   const { email, password } = req.body;
-
-//   try {
-//     // Check if user with the provided email exists
-//     const user = await User.findOne({ email: email });
-
-//     if (user) {
-//       // Compare the provided password with the stored hashed password
-//       const isPasswordValid = await bcrypt.compare(password, user.password);
-
-//       if (isPasswordValid) {
-//         // Generate a JWT token for authentication
-//         const token = jwt.sign({ userId: user._id }, process.env.TOKEN_KEY);
-
-//         // Record login event
-//         user.loginHistory.push({ timestamp: Date.now(), ipAddress: req.ip });
-
-//         // Store the token in the user object
-//         user.token = token;
-
-//         // await user.save();
-//         // Send the JSON response to the client
-//         res.status(200).json({
-//           status: true,
-//           message: 'Login successful',
-//           data: user,
-//         });
-//       } else {
-//         res.status(401).json({ status: false, message: 'Invalid password' });
-//       }
-//     } else {
-//       res.status(404).json({ status: false, message: 'User not found' });
-//     }
-//   } catch (error) {
-//     console.error('Error logging in user:', error);
-//     res.status(500).json({ status: false, message: 'Internal server error' });
-//   }
-// };
 
 
 exports.login = async (req, res) => {
@@ -169,7 +193,6 @@ exports.login = async (req, res) => {
         const token = jwt.sign({ userId: user._id }, process.env.TOKEN_KEY);
 
         // Record login event
-        // user.loginHistory.push({ timestamp: Date.now(), ipAddress: req.ip });
         await recordLoginHistory(user._id, req.ip);
 
 
@@ -373,55 +396,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// exports.resetPassword = async (req, res) => {
-//   try {
-//     const { email } = req.body;
-
-//     // Find the user by email (replace with a database query)
-//     const user = await User.findOne({ email });
-
-//     if (!user) {
-//       return res.status(404).json({ error: 'User not found' });
-//     }
-//     // Generate a 4-digit temporary code
-//     const resetToken = Math.floor(1000 + Math.random() * 9000).toString();
-
-
-//     // Store the reset token and update user in the database
-//     // user.resetToken = resetToken;
-//     user.emailVerification.otp = resetToken;
-//     await user.save();
-
-//     // Send a password reset email
-//     const mailOptions = {
-//       from: 'danishhusain2000@gmail.com',
-//       to: email,
-//       subject: 'Password Reset',
-//       // text: `Click the following link to reset your password: http://localhost:4000/reset/${resetToken}`,
-//       text: `Dear ${user.userName},
-
-//       Thank you for using demoCompany services.
-
-//       Your One-Time Password (OTP) for account verification is: ${resetToken}.
-
-//       Please enter this code on the verification screen to complete the process.
-
-//       If you did not request this OTP, please contact our support team immediately.
-
-//       Thank you,
-//       demoCompany Team
-//       `,
-//     };
-
-//     const info = await transporter.sendMail(mailOptions);
-
-//     console.log(`Email sent: ${info.response}`);
-//     return res.status(200).json({ message: 'Password reset email sent successfully', status: true });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({ error: 'Failed to send reset email' });
-//   }
-// };
 
 exports.resetPassword = async (req, res) => {
   try {
@@ -476,8 +450,6 @@ exports.verifyOTP = async (req, res) => {
     }
 
     // Clear the OTP after successful verification
-    // user.emailVerification.otp = null;
-    // await user.save();
 
     return res.status(200).json({ message: 'OTP verification successful', status: true });
   } catch (error) {
@@ -513,12 +485,38 @@ exports.passwordUpdate = async (req, res) => {
 };
 
 
+// Update user Role
+exports.updateUserRoles = async (req, res) => {
+  const { userId, newRoles } = req.body;
 
+  try {
+    // Validate that userId and newRoles are provided in the request body
+    if (!userId || !newRoles || !Array.isArray(newRoles) || newRoles.length === 0) {
+      return res.status(400).json({ status: false, message: 'userId and non-empty newRoles array are required in the request body' });
+    }
 
+    // Validate that newRoles contain only allowed roles
+    const allowedRoles = ['admin', 'subAdmin', 'manager', 'employee'];
+    const invalidRoles = newRoles.filter(role => !allowedRoles.includes(role));
 
+    if (invalidRoles.length > 0) {
+      return res.status(400).json({ status: false, message: 'given newRoles are not available', invalidRoles });
+    }
 
+    // Use Mongoose to update the roles based on userId
+    const result = await User.findOneAndUpdate(
+      { userId },
+      { $set: { roles: newRoles } },
+      { new: true } // Return the updated document
+    );
 
+    if (!result) {
+      return res.status(404).json({ status: false, message: 'User not found' });
+    }
 
-
-
-
+    res.status(200).json({ status: true, message: 'User roles updated successfully', data: result });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: false, message: 'Internal Server Error' });
+  }
+};

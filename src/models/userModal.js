@@ -10,6 +10,12 @@ const userSchema = new mongoose.Schema({
     unique: true,
     default: () => crypto.randomBytes(8).toString('hex')
   },
+  companyId: {
+    type: String,
+    required: true,
+    unique: true,
+    default: () => crypto.randomBytes(4).toString('hex')
+},
   userName: {
     type: String,
     trim: true,
